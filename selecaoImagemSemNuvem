@@ -1,0 +1,124 @@
+// Definir as coordenadas dos vértices do polígono que representa sua área de estudo
+var shapefile = ee.FeatureCollection("projects/santarem-ic/assets/shapefile-santarem");
+
+// Shapefile, estilo e centralizar mapa
+Map.addLayer(shapefile, {}, 'Shapefile');
+Map.centerObject(shapefile, 12);
+
+// Dicionário para armazenar coleções por ano
+var colecoesPorAno = {};
+
+// Carregar imagens LANDSAT da coleção para cada ano
+for (var year = 2002; year <= 2023; year++) {
+  var startDate = year + '-01-01';
+  var endDate = year + '-12-31';
+  
+  var colecaoAno;
+  
+  // Especifica qual coleção Landsat usar para cada intervalo de anos
+  if (year === 2002) {
+    colecaoAno = ee.ImageCollection('LANDSAT/LE07/C01/T1'); // LANDSAT7
+  } else if (year >= 2003 && year <= 2011) {
+    colecaoAno = ee.ImageCollection('LANDSAT/LT05/C01/T1'); // LANDSAT5
+  } else {
+    colecaoAno = ee.ImageCollection('LANDSAT/LC08/C01/T1');
+  }
+
+  colecaoAno = colecaoAno.filterBounds(shapefile)
+                         .filterDate(startDate, endDate)
+                         .sort('system:time_start')
+                         .map(function(image) {
+                           return image.clip(shapefile);
+                         });
+  
+  // Armazenar a coleção no dicionário
+  colecoesPorAno[year] = colecaoAno;
+}
+
+// Verificar quantidade de imagens na coleção do ano
+// print(colecoesPorAno[2022].size())
+
+// Seleção de imagens com melhor visibilidade
+var imagem2021 = ee.Image(colecoesPorAno[2021].toList(colecoesPorAno[2021].size()).get(2));
+var imagem2020 = ee.Image(colecoesPorAno[2020].toList(colecoesPorAno[2020].size()).get(2));
+var imagem2019 = ee.Image(colecoesPorAno[2019].toList(colecoesPorAno[2019].size()).get(2));
+var imagem2018 = ee.Image(colecoesPorAno[2018].toList(colecoesPorAno[2018].size()).get(3));
+var imagem2017 = ee.Image(colecoesPorAno[2017].toList(colecoesPorAno[2017].size()).get(2));
+var imagem2016 = ee.Image(colecoesPorAno[2016].toList(colecoesPorAno[2016].size()).get(1));
+var imagem2015 = ee.Image(colecoesPorAno[2015].toList(colecoesPorAno[2015].size()).get(4));
+var imagem2014 = ee.Image(colecoesPorAno[2014].toList(colecoesPorAno[2014].size()).get(5));
+var imagem2011 = ee.Image(colecoesPorAno[2011].toList(colecoesPorAno[2011].size()).get(3));
+var imagem2010 = ee.Image(colecoesPorAno[2010].toList(colecoesPorAno[2010].size()).get(2));
+var imagem2009 = ee.Image(colecoesPorAno[2009].toList(colecoesPorAno[2009].size()).get(3));
+var imagem2008 = ee.Image(colecoesPorAno[2008].toList(colecoesPorAno[2008].size()).get(10));
+var imagem2007 = ee.Image(colecoesPorAno[2007].toList(colecoesPorAno[2007].size()).get(3));
+var imagem2006 = ee.Image(colecoesPorAno[2006].toList(colecoesPorAno[2006].size()).get(9));
+var imagem2005 = ee.Image(colecoesPorAno[2005].toList(colecoesPorAno[2005].size()).get(3));
+var imagem2004 = ee.Image(colecoesPorAno[2004].toList(colecoesPorAno[2004].size()).get(10));
+var imagem2003 = ee.Image(colecoesPorAno[2003].toList(colecoesPorAno[2003].size()).get(4));
+var imagem2002 = ee.Image(colecoesPorAno[2002].toList(colecoesPorAno[2002].size()).get(15));
+
+// Array contendo todas as imagens
+var melhoresVisualizacoes = [
+  imagem2021,
+  imagem2020,
+  imagem2019,
+  imagem2018,
+  imagem2017,
+  imagem2016,
+  imagem2015,
+  imagem2014,
+  imagem2011,
+  imagem2010,
+  imagem2009,
+  imagem2008,
+  imagem2007,
+  imagem2006,
+  imagem2005,
+  imagem2004,
+  imagem2003,
+  imagem2002
+];
+
+// Transformar em ImageCollection
+var colecaoImagens = ee.ImageCollection.fromImages(melhoresVisualizacoes);
+
+// Loop para verificar o CRS de cada imagem 
+// melhoresVisualizacoes.forEach(function(imagem, index) {
+//   var singleBand = imagem.select('B4');
+//   var crs = singleBand.projection().getInfo().crs;
+//   print("O CRS da imagem do ano " + (2002 + index) + " é: ", crs);
+// });
+
+// EXPORTACAO
+// Lista de anos para nomear as imagens
+var anos = [
+  2002, 2003, 2004, 2005, 2006,
+  2007, 2008, 2009, 2010, 2011,
+  2014, 2015, 2016,
+  2017, 2018, 2019, 2020, 2021
+];
+
+// Exportar imagens para o Google Drive
+var imagensParaExportar = colecaoImagens.toList(colecaoImagens.size());
+
+var tamanho = imagensParaExportar.size().getInfo();
+
+for (var i = 0; i < tamanho; i++) {
+  var imagem = ee.Image(imagensParaExportar.get(i));
+
+  // Converter todas as bandas para UInt16 para garantir compatibilidade
+  imagem = imagem.toUint16();
+
+  // Obter o ano correspondente para nomear a imagem
+  var ano = anos[i];
+
+  // Exportar a imagem para o Google Drive
+  Export.image.toDrive({
+    image: imagem,
+    description: 'Imagem_' + ano,
+    scale: 30,
+    region: shapefile.geometry(),
+    fileFormat: 'GeoTIFF'
+  });
+}
