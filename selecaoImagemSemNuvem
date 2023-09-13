@@ -23,7 +23,8 @@ for (var year = 2002; year <= 2023; year++) {
   } else {
     colecaoAno = ee.ImageCollection('LANDSAT/LC08/C01/T1');
   }
-
+  
+  // Filtros comuns
   colecaoAno = colecaoAno.filterBounds(shapefile)
                          .filterDate(startDate, endDate)
                          .sort('system:time_start')
@@ -35,7 +36,8 @@ for (var year = 2002; year <= 2023; year++) {
   colecoesPorAno[year] = colecaoAno;
 }
 
-// Verificar quantidade de imagens na coleção do ano
+
+// Verificar quantas imagens tem na coleção do ano para analizar
 // print(colecoesPorAno[2022].size())
 
 // Seleção de imagens com melhor visibilidade
@@ -84,11 +86,12 @@ var melhoresVisualizacoes = [
 var colecaoImagens = ee.ImageCollection.fromImages(melhoresVisualizacoes);
 
 // Loop para verificar o CRS de cada imagem 
-// melhoresVisualizacoes.forEach(function(imagem, index) {
-//   var singleBand = imagem.select('B4');
-//   var crs = singleBand.projection().getInfo().crs;
-//   print("O CRS da imagem do ano " + (2002 + index) + " é: ", crs);
-// });
+melhoresVisualizacoes.forEach(function(imagem, index) {
+  var singleBand = imagem.select('B4');
+  var crs = singleBand.projection().getInfo().crs;
+  print("O CRS da imagem do ano " + (2002 + index) + " é: ", crs);
+});
+
 
 // EXPORTACAO
 // Lista de anos para nomear as imagens
