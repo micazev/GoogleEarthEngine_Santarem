@@ -64,7 +64,7 @@ for (var ano in imagemDoAno) {
   var trainingData = imagemComIndices.sampleRegions({
     collection: geometryCollection,
     properties: ['classe'],
-    scale: 30
+    scale: 10
   });
   trainingDataList = trainingDataList.add(trainingData);
 }
@@ -92,7 +92,7 @@ for (var ano in imagemDoAno) {
   // Export.image.toDrive({
   //   image: classifiedImage,
   //   description: 'Classificacao_' + ano,
-  //   scale: 30,
+  //   scale: 10,
   //   region: shapefile.geometry(),
   //   fileFormat: 'GeoTIFF'
   // });
