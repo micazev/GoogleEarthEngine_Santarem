@@ -1,40 +1,49 @@
-// Definir as coordenadas dos vértices do polígono que representa sua área de estudo
+// Carregar shapefile e configurar o mapa
 var shapefile = ee.FeatureCollection("projects/santarem-ic/assets/shapefile-santarem");
-
-// Shapefile, estilo e centralizar mapa
 Map.addLayer(shapefile, {}, 'Shapefile');
 Map.centerObject(shapefile, 12);
 
-// Dicionário para armazenar coleções por ano e lista para dados de treinamento
+// Inicializar dicionário para coleções de imagens e lista para dados de treinamento
 var colecoesPorAno = {};
 var trainingDataList = ee.List([]);
 
-// Inicializa as regiões de interesse
+// Carregar regiões de interesse
 var geometryCollection = ee.FeatureCollection("projects/santarem-ic/assets/poligonosLANDSAT");
 
-// Carregar imagens LANDSAT da coleção para cada ano
+// Função para calcular NDVI
+var calcularNDVI = function(imagem, ano) {
+  var bandas = (ano >= 2003 && ano <= 2011) ? ['B4', 'B3'] : ['B5', 'B4'];
+  return imagem.addBands(imagem.normalizedDifference(bandas).rename('NDVI'));
+};
+
+// Função para calcular NDWI
+var calcularNDWI = function(imagem, ano) {
+  var bandas = (ano >= 2003 && ano <= 2011) ? ['B2', 'B4'] : ['B3', 'B5'];
+  return imagem.addBands(imagem.normalizedDifference(bandas).rename('NDWI'));
+};
+
+// Carregar coleções de imagens Landsat para cada ano
 for (var year = 2002; year <= 2023; year++) {
   var startDate = year + '-01-01';
   var endDate = year + '-12-31';
-  
-  // Especificar qual coleção Landsat usar para cada intervalo de anos
+
+  // Escolher a coleção Landsat apropriada para o ano
   var colecaoAno = (year === 2002) ? ee.ImageCollection('LANDSAT/LE07/C01/T1') :
                   (year >= 2003 && year <= 2011) ? ee.ImageCollection('LANDSAT/LT05/C01/T1') :
                   ee.ImageCollection('LANDSAT/LC08/C01/T1');
 
-  // Aplicar filtros comuns
+  // Filtrar e recortar imagens
   colecaoAno = colecaoAno.filterBounds(shapefile)
-                        .filterDate(startDate, endDate)
-                        .sort('system:time_start')
-                        .map(function(image) {
-                          return image.clip(shapefile);
-                        });
+                         .filterDate(startDate, endDate)
+                         .map(function(image) {
+                           return image.clip(shapefile);
+                         });
   
-  // Armazenar a coleção no dicionário
+  // Adicionar ao dicionário
   colecoesPorAno[year] = colecaoAno;
 }
 
-// Lista de anos e a imagem selecionada de cada um deles 
+// Índices de imagens selecionadas para cada ano
 var imagemDoAno = {
   2021: 2,
   2020: 2,
@@ -56,46 +65,16 @@ var imagemDoAno = {
   2002: 15
 };
 
-// RANDOM FOREST
-
-
-// Formula NDVI (Normalized Difference Vegetation Index) - dependendo do sensor
-var calcularNDVI = function(imagem, ano) {
-  var bandasNDVI;
-  if (ano >= 2003 && ano <= 2011) {
-    bandasNDVI = ['B4', 'B3'];
-  } else {
-    bandasNDVI = ['B5', 'B4'];
-  }
-  var ndvi = imagem.normalizedDifference(bandasNDVI).rename('NDVI');
-  return imagem.addBands(ndvi);
-};
-
-// Função para calcular o NDWI (Normalized Difference Water Index) - dependendo do sensor
-var calcularNDWI = function(imagem, ano) {
-  var bandasNDWI;
-  if (ano >= 2003 && ano <= 2011) {
-    bandasNDWI = ['B2', 'B4'];  // Bandas para Landsat 5 e 7
-  } else {
-    bandasNDWI = ['B3', 'B5'];  // Bandas para Landsat 8
-  }
-  var ndwi = imagem.normalizedDifference(bandasNDWI).rename('NDWI');
-  return imagem.addBands(ndwi);
-};
-
-
-// Loop através dos anos e índices para gerar dados de treinamento
+// Loop para gerar dados de treinamento e classificação para cada ano
 for (var ano in imagemDoAno) {
+  // Carregar a imagem específica para o ano
   var imagem = ee.Image(colecoesPorAno[ano].toList(colecoesPorAno[ano].size()).get(imagemDoAno[ano]));
-  
+
+  // Calcular NDVI e NDWI
   var imagemComIndices = calcularNDVI(imagem, ano);
-  imagemComIndices = calcularNDWI(imagemComIndices, ano);  // Adiciona NDWI à imagem que já tem NDVI
+  imagemComIndices = calcularNDWI(imagemComIndices, ano);
 
-
-
-  // Especificar bandas com base na versão do Landsat
-  var bandas = (ano >= 2003 && ano <= 2011) ? ['B1', 'B2', 'B3', 'B4', 'NDVI', 'NDWI'] : ['B2', 'B3', 'B4', 'B5', 'NDVI', 'NDWI'];
-  
+  // Coletar dados de treinamento
   var trainingData = imagemComIndices.sampleRegions({
     collection: geometryCollection,
     properties: ['classe'],
@@ -104,13 +83,15 @@ for (var ano in imagemDoAno) {
   
   trainingDataList = trainingDataList.add(trainingData);
 
-  // Treinar o classificador dentro do loop
+  // Treinar o classificador
+  var bandas = (ano >= 2003 && ano <= 2011) ? ['B1', 'B2', 'B3', 'B4', 'NDVI', 'NDWI'] : ['B2', 'B3', 'B4', 'B5', 'NDVI', 'NDWI'];
   var classifier = ee.Classifier.smileRandomForest(50).train({
     features: trainingData,
     classProperty: 'classe',
     inputProperties: bandas  
   });
 
+  // Classificar a imagem
   var classifiedImage = imagemComIndices.classify(classifier);
   
   // Adicionar a imagem classificada ao mapa
