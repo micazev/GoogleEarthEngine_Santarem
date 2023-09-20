@@ -1,0 +1,100 @@
+// Definir as coordenadas dos vértices do polígono que representa sua área de estudo
+var shapefile = ee.FeatureCollection("projects/santarem-ic/assets/shapefile-santarem");
+
+// Shapefile, estilo e centralizar mapa
+Map.addLayer(shapefile, {}, 'Shapefile');
+Map.centerObject(shapefile, 12);
+
+// Inicializa as regiões de interesse
+var geometryCollection = ee.FeatureCollection("projects/santarem-ic/assets/poligonosSENTINEL");
+
+// Dicionário para armazenar coleções por ano e lista para dados de treinamento
+var colecoesPorAno = {};
+var trainingDataList = ee.List([]);
+
+
+// Carregar imagens da coleção Sentinel para cada ano
+for (var year = 2015; year <= 2023; year++) {  // Atenção: Sentinel-2 começa em 2015
+  var startDate = year + '-01-01';
+  var endDate = year + '-12-31';
+  
+  var colecaoAno = ee.ImageCollection('COPERNICUS/S2')
+    .filterDate(startDate, endDate)
+    .filterBounds(shapefile)
+    .sort('system:time_start')
+    .map(function(image) {
+      return image.clip(shapefile);
+    });
+    
+  // Armazenar a coleção no dicionário
+  colecoesPorAno[year] = colecaoAno;
+}
+
+// Lista de anos e a imagem selecionada de cada um deles 
+var imagemDoAno = {
+  2022: 77,
+  2021: 72,
+  2020: 66,
+  2019: 82,
+  2018: 32,
+  2017: 64,
+  2016: 82,
+};
+
+// Formula NDVI (Normalized Difference Vegetation Index)
+var calcularNDVI = function(sentinelImage) {
+  var ndvi = sentinelImage.normalizedDifference(['B8', 'B4']).rename('NDVI');
+  return sentinelImage.addBands(ndvi);
+};
+
+// Formula NDWI (Normalized Difference Water Index) - dependendo do sensor
+var calcularNDWI = function(sentinelImage) {
+  var ndwi = sentinelImage.normalizedDifference(['B3', 'B8']).rename('NDWI');
+  return sentinelImage.addBands(ndwi);
+};
+
+
+// Loop através dos anos e índices para gerar dados de treinamento
+for (var ano in imagemDoAno) {
+  var imagem = ee.Image(colecoesPorAno[ano].toList(colecoesPorAno[ano].size()).get(imagemDoAno[ano]));
+  var imagemComIndices = calcularNDVI(imagem, ano);
+  imagemComIndices = calcularNDWI(imagemComIndices, ano);  // Adiciona NDWI à imagem que já tem NDVI
+
+  // Map.addLayer(imagem, {bands: ['B2', 'B3', 'B4', 'B8'], min: 0, max: 3000}, ano)
+  var trainingData = imagemComIndices.sampleRegions({
+    collection: geometryCollection,
+    properties: ['classe'],
+    scale: 30
+  });
+  trainingDataList = trainingDataList.add(trainingData);
+}
+
+// RANDOM FOREST
+// Converter a lista de dados de treinamento em um único FeatureCollection
+var combinedTrainingData = ee.FeatureCollection(trainingDataList).flatten();
+  
+  // Treinar o classificador
+var classifier = ee.Classifier.smileRandomForest(50).train({
+  features: combinedTrainingData,
+  classProperty: 'classe',
+  inputProperties: ['B2', 'B3', 'B4', 'B8', 'NDVI', 'NDWI']  
+});
+
+// Classificar cada imagem selecionada, adicioná-la ao mapa e salvar no drive
+for (var ano in imagemDoAno) {
+  var imagem = ee.Image(colecoesPorAno[ano].toList(colecoesPorAno[ano].size()).get(imagemDoAno[ano]));
+  var classifiedImage = imagemComIndices.classify(classifier);
+  
+  // Adicionar a imagem classificada ao mapa
+  Map.addLayer(classifiedImage, {min: 1, max: 5, palette: ['#0000FF', '#00FF00', '#FFFF00', '#FFA500', '#006400']}, 'Classificação ' + ano);
+  
+    // Exportar a imagem classificada para o Google Drive
+  // Export.image.toDrive({
+  //   image: classifiedImage,
+  //   description: 'Classificacao_' + ano,
+  //   scale: 30,
+  //   region: shapefile.geometry(),
+  //   fileFormat: 'GeoTIFF'
+  // });
+}
+
