@@ -44,3 +44,5 @@ Este repositório contém códigos para análise temporal de imagens Landsat e S
 - **Cálculo de Índices**: Funções para calcular NDVI e NDWI dependendo do sensor do Landsat.
 
 - **Random Forest Classifier**: Implementação da classificação Random Forest.
+  
+Cada imagem é categorizada (classificada) individualmente usando os polígonos de treinamento. Cada imagem é primeiro recortada para o polígono da área de estudo (shapefile). Em seguida, os índices NDVI e NDWI são calculados para cada imagem. Os dados de treinamento são coletados dos polígonos de interesse (geometryCollection), e um classificador Random Forest é treinado com esses dados. Por fim, cada imagem é classificada usando o classificador treinado e adicionada ao mapa.
