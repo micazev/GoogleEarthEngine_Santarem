@@ -28,11 +28,11 @@ Este repositório contém códigos para análise temporal de imagens Landsat e S
 
 2. **Faça o download dos polígonos** para a pasta de Assets do seu projeto GEE
 
-   Renomeie o caminho dos arquivos corretamente em
-   var shapefile = ee.FeatureCollection("...");
-   var geometryCollection = ee.FeatureCollection("...");
+   Renomeie o caminho dos arquivos corretamente em:
+   - var shapefile = ee.FeatureCollection("...");
+   - var geometryCollection = ee.FeatureCollection("...");
 
-3. **Execute o Script**
+4. **Execute o Script**
 
    Clique no botão 'Run' para executar o script.
 
