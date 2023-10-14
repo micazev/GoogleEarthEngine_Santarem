@@ -1,48 +1,48 @@
-# Santarém IC - Análise Temporal de Dados Landsat e Sentinel na Região de Santarém
+# Santarém: Temporal Analysis of Landsat and Sentinel Data in the Santarém Region
 
-## Descrição
+### Description
 
-Este repositório contém códigos para análise temporal de imagens Landsat e Sentinel na região de Santarém. Os scripts foram escritos usando a API do Google Earth Engine e incluem funcionalidades para:
+This repository contains code for the temporal analysis of Landsat and Sentinel satellite images in the Santarém region. The scripts have been written using the Google Earth Engine API and include functionalities for:
 
-- Importar shapefiles contendo as áreas de estudo.
-- Filtro e classificação de imagens Landsat e Sentinel para múltiplos anos.
-- Cálculo de índices de vegetação (NDVI) e água (NDWI).
-- Classificação de uso do solo utilizando Random Forest.
+- Importing shapefiles containing study areas.
+- Filtering and classifying Landsat and Sentinel images for multiple years.
+- Calculating vegetation indices (NDVI) and water indices (NDWI).
+- Land use classification using Random Forest.
 
-## Pré-requisitos
+### Prerequisites
 
-- Conta no Google Earth Engine
-- API do Google Earth Engine instalada
+To use this project, you'll need:
 
-## Estrutura do Repositório
+- A Google Earth Engine account.
+- The Google Earth Engine API installed.
 
-- `loop-landsat-indices`: Script para a análise usando dados do Landsat.
-- `loop-sentinel-indices`: Script para a análise usando dados do Sentinel.
-- `selecaoImagemSemNuvem`: Script com o rascunho de como foi feita a seleção manual das imagens sem nuvem
+### Repository Structure
 
-## Como Usar
+- **loop-landsat-indices**: Script for analysis using Landsat data.
+- **loop-sentinel-indices**: Script for analysis using Sentinel data.
+- **selecaoImagemSemNuvem**: Script with a draft of how cloud-free image selection was performed.
 
-1. **Acesse o Google Earth Engine e Cole o Código** de cada arquivo loop em files distintas
+### How to Use
 
-   Abra o Editor de Scripts do Google Earth Engine e cole o código.
+1. Access Google Earth Engine and paste the code from each loop file into separate files.
+2. Open the Google Earth Engine Script Editor and paste the code.
+3. Download the polygons to the Assets folder of your GEE project.
+4. Rename the file paths correctly in:
 
-2. **Faça o download dos polígonos** para a pasta de Assets do seu projeto GEE
+   ```javascript
+   var shapefile = ee.FeatureCollection("...");
+   var geometryCollection = ee.FeatureCollection("...");
+   ```
 
-   Renomeie o caminho dos arquivos corretamente em:
-   - var shapefile = ee.FeatureCollection("...");
-   - var geometryCollection = ee.FeatureCollection("...");
+5. Execute the script.
 
-4. **Execute o Script**
+Click the 'Run' button to execute the script.
 
-   Clique no botão 'Run' para executar o script.
+### Script Features
 
-## Características dos Scripts
+- **Shapefile Import**: Imports shapefiles that define the study area in Santarém.
+- **Temporal Loop**: Loops to filter and collect images for multiple years.
+- **Index Calculation**: Functions to calculate NDVI and NDWI depending on the Landsat sensor.
+- **Random Forest Classifier**: Implementation of the Random Forest classification.
 
-- **Importação de Shapefiles**: Importa shapefiles que definem a área de estudo em Santarém.
-- **Loop Temporal**: Loop para filtrar e coletar imagens para múltiplos anos.
-
-- **Cálculo de Índices**: Funções para calcular NDVI e NDWI dependendo do sensor do Landsat.
-
-- **Random Forest Classifier**: Implementação da classificação Random Forest.
-  
-Cada imagem é categorizada (classificada) individualmente usando os polígonos de treinamento. Cada imagem é primeiro recortada para o polígono da área de estudo (shapefile). Em seguida, os índices NDVI e NDWI são calculados para cada imagem. Os dados de treinamento são coletados dos polígonos de interesse (geometryCollection), e um classificador Random Forest é treinado com esses dados. Por fim, cada imagem é classificada usando o classificador treinado e adicionada ao mapa.
+Each image is categorized (classified) individually using the training polygons. Each image is first clipped to the study area's polygon (shapefile). Then, NDVI and NDWI indices are calculated for each image. Training data is collected from the polygons of interest (geometryCollection), and a Random Forest classifier is trained with this data. Finally, each image is classified using the trained classifier and added to the map.
